@@ -2,5 +2,9 @@ export {
   default as brush,
   brushX,
   brushY,
-  brushSelection
+  brushSelection,
+  brushForceNew,
+  brushFixSize,
+  brushFixCenter,
+  brushFixSecondary
 } from "./brush";
