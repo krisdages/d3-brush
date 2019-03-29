@@ -599,6 +599,7 @@ function brush(dim) {
 
   brush.keyModifier = function(brushModifier, keyCode) {
     switch (brushModifier) {
+      case brushForceNew: return applyModifier(modForceNew, keyCode);
       case brushFixSize: return applyModifier(modFixSize, keyCode);
       case brushFixCenter: return applyModifier(modFixCenter, keyCode);
       case brushFixSecondary: return applyModifier(modFixSecondary, keyCode);
