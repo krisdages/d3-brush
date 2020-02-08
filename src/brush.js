@@ -7,6 +7,43 @@ import constant from "./constant.js";
 import BrushEvent from "./event.js";
 import noevent, {nopropagation} from "./noevent.js";
 
+var   ALT_KEY = 18,
+     CTRL_KEY = 17,
+     META_KEY = 91,
+    SHIFT_KEY = 16,
+    SPACE_KEY = 32;
+
+var EVENT_MOD_KEYS = { };
+EVENT_MOD_KEYS[ALT_KEY] = "altKey";
+EVENT_MOD_KEYS[CTRL_KEY] = "ctrlKey";
+EVENT_MOD_KEYS[SHIFT_KEY] = "shiftKey";
+EVENT_MOD_KEYS[META_KEY] = "metaKey";
+
+function KeyModifier(keyCode) {
+  this._keyCode = keyCode;
+}
+
+KeyModifier.prototype = {
+  keyCode: function(keyCode) {
+    if (keyCode === undefined) {
+      return this._keyCode;
+    }
+    if (keyCode === null) {
+      this._keyCode = null;
+    }
+    else {
+      this._keyCode = +keyCode;
+    }
+    return this;
+  },
+};
+var brushForceNew = new KeyModifier(META_KEY);
+var brushFixSize = new KeyModifier(SPACE_KEY);
+var brushFixCenter = new KeyModifier(ALT_KEY);
+var brushFixSecondary = new KeyModifier(SHIFT_KEY);
+
+export { brushForceNew, brushFixSize, brushFixCenter, brushFixSecondary };
+
 var MODE_DRAG = {name: "drag"},
     MODE_SPACE = {name: "space"},
     MODE_HANDLE = {name: "handle"},
@@ -157,7 +194,21 @@ function brush(dim) {
       keys = true,
       listeners = dispatch("start", "brush", "end"),
       handleSize = 6,
-      touchending;
+      touchending,
+      modForceNew = new KeyModifier(brushForceNew._keyCode),
+      modFixSize = new KeyModifier(brushFixSize._keyCode),
+      modFixCenter = new KeyModifier(brushFixCenter._keyCode),
+      modFixSecondary = new KeyModifier(brushFixSecondary._keyCode);
+
+  function eventModMatches(event, keyModifier) {
+    var keyCode = keyModifier._keyCode;
+    if (keyCode === null)
+      return false;
+
+    var modKey = EVENT_MOD_KEYS[keyCode];
+
+    return modKey !== undefined && event[modKey];
+  }
 
   function brush(group) {
     var overlay = group
@@ -337,7 +388,7 @@ function brush(dim) {
 
     var that = this,
         type = event.target.__data__.type,
-        mode = (keys && event.metaKey ? type = "overlay" : type) === "selection" ? MODE_DRAG : (keys && event.altKey ? MODE_CENTER : MODE_HANDLE),
+        mode = (keys && eventModMatches(event, modForceNew) ? type = "overlay" : type) === "selection" ? MODE_DRAG : (keys && eventModMatches(event, modFixCenter) ? MODE_CENTER : MODE_HANDLE),
         signX = dim === Y ? null : signsX[type],
         signY = dim === X ? null : signsY[type],
         state = local(that),
@@ -350,7 +401,8 @@ function brush(dim) {
         dx = 0,
         dy = 0,
         moving,
-        shifting = signX && signY && keys && event.shiftKey,
+        shifting = signX && signY && keys && eventModMatches(event, modFixSecondary),
+        alting = keys && eventModMatches(event, modFixCenter),
         lockX,
         lockY,
         points = Array.from(event.touches || [event], t => {
@@ -509,11 +561,12 @@ function brush(dim) {
 
     function keydowned(event) {
       switch (event.keyCode) {
-        case 16: { // SHIFT
+        case modFixSecondary._keyCode: { // SHIFT
           shifting = signX && signY;
           break;
         }
-        case 18: { // ALT
+        case modFixCenter._keyCode: { // ALT
+          alting = true;
           if (mode === MODE_HANDLE) {
             if (signX) e0 = e1 - dx * signX, w0 = w1 + dx * signX;
             if (signY) s0 = s1 - dy * signY, n0 = n1 + dy * signY;
@@ -522,7 +575,7 @@ function brush(dim) {
           }
           break;
         }
-        case 32: { // SPACE; takes priority over ALT
+        case modFixSize._keyCode: { // SPACE; takes priority over ALT
           if (mode === MODE_HANDLE || mode === MODE_CENTER) {
             if (signX < 0) e0 = e1 - dx; else if (signX > 0) w0 = w1 - dx;
             if (signY < 0) s0 = s1 - dy; else if (signY > 0) n0 = n1 - dy;
@@ -539,14 +592,15 @@ function brush(dim) {
 
     function keyupped(event) {
       switch (event.keyCode) {
-        case 16: { // SHIFT
+        case modFixSecondary._keyCode: { // SHIFT
           if (shifting) {
             lockX = lockY = shifting = false;
             move();
           }
           break;
         }
-        case 18: { // ALT
+        case modFixCenter._keyCode: { // ALT
+          alting = false;
           if (mode === MODE_CENTER) {
             if (signX < 0) e0 = e1; else if (signX > 0) w0 = w1;
             if (signY < 0) s0 = s1; else if (signY > 0) n0 = n1;
@@ -555,9 +609,9 @@ function brush(dim) {
           }
           break;
         }
-        case 32: { // SPACE
+        case modFixSize._keyCode: { // SPACE
           if (mode === MODE_SPACE) {
-            if (event.altKey) {
+            if (eventModMatches(event, modFixCenter) || alting) {
               if (signX) e0 = e1 - dx * signX, w0 = w1 + dx * signX;
               if (signY) s0 = s1 - dy * signY, n0 = n1 + dy * signY;
               mode = MODE_CENTER;
@@ -615,6 +669,24 @@ function brush(dim) {
   brush.on = function() {
     var value = listeners.on.apply(listeners, arguments);
     return value === listeners ? brush : value;
+  };
+
+  function applyModifier(mod, keyCode) {
+    if (keyCode === undefined) {
+      return mod.keyCode();
+    }
+    mod.keyCode(keyCode);
+    return brush;
+  }
+
+  brush.keyModifier = function(brushModifier, keyCode) {
+    switch (brushModifier) {
+      case brushForceNew: return applyModifier(modForceNew, keyCode);
+      case brushFixSize: return applyModifier(modFixSize, keyCode);
+      case brushFixCenter: return applyModifier(modFixCenter, keyCode);
+      case brushFixSecondary: return applyModifier(modFixSecondary, keyCode);
+      default: return brush;
+    }
   };
 
   return brush;

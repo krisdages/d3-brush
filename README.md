@@ -1,3 +1,51 @@
+This is a fork of d3-brush that contains some customization for defining key modifiers for brushing.
+
+The master branch of the repository is synced with upstream.
+The scoped npm package `@krisdages/d3-brush` is deployed from the `feature/key-modifiers` branch.
+
+https://github.com/krisdages/d3-brush/tree/feature/key-modifiers
+
+This fork is unsupported and only intended for personal use.
+
+### Differences from Upstream 
+
+Added modifier behavior "constants" that also hold
+the default key modifier.
+
+* d3.brushForceNew (Meta key) <-- unsure on naming
+* d3.brushFixSize (Space key)
+* d3.brushFixCenter (Alt key)
+* d3.brushFixSecondary (Shift key)
+
+Default modifier key code can be changed, or the behavior disabled,
+by calling
+```
+d3.brushFixSecondary.keyCode(newKeyCode);  //change
+d3.brushFixCenter.keyCode(null); //disable
+```
+Default modifier key code can be retrieved by calling `.keyCode()`
+without arguments.
+
+Added `brush.keyModifier(behavior, keyCode)` method
+
+Modifier keys for an individual brush can be changed or disabled
+by calling
+```
+brush.keyModifier(d3.brushFixSecondary, keyCode); //change
+brush.keyModifier(d3.brushFixCenter, null); //disable
+```
+
+The current modifier key code can be retrieved by passing the behavior
+without an argument for key code.
+```
+const keyCode = brush.keyModifier(d3.brushFixSecondary); // keyCode === 16
+```
+
+Note: Non-modifier keys can be set as the key code for brushFixCenter,
+but the behavior will only be applied/stopped for keydown/keyup while
+brushing is active, since the key code can't be mapped to one of the
+`modifierKey` properties on MouseEvent.
+
 # d3-brush
 
 Brushing is the interactive specification a one- or two-dimensional selected region using a pointing gesture, such as by clicking and dragging the mouse. Brushing is often used to select discrete elements, such as dots in a scatterplot or files on a desktop. It can also be used to zoom-in to a region of interest, or to select continuous regions for [cross-filtering data](http://square.github.io/crossfilter/) or live histograms:
