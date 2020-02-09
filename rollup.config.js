@@ -1,11 +1,13 @@
 import {terser} from "rollup-plugin-terser";
 import * as meta from "./package.json";
 
+const PACKAGE_NAME = "d3-brush";
+
 const config = {
   input: "src/index.js",
   external: Object.keys(meta.dependencies || {}).filter(key => /^d3-/.test(key)),
   output: {
-    file: `dist/${meta.name}.js`,
+    file: `dist/${PACKAGE_NAME}.js`,
     name: "d3",
     format: "umd",
     indent: false,
@@ -22,7 +24,7 @@ export default [
     ...config,
     output: {
       ...config.output,
-      file: `dist/${meta.name}.min.js`
+      file: `dist/${PACKAGE_NAME}.min.js`
     },
     plugins: [
       ...config.plugins,
